@@ -117,19 +117,6 @@ struct HomeView: View {
     }
 }
 
-struct VideoEditorView: View {
-    let videoURL: URL
-    
-    var body: some View {
-        VStack {
-            VideoPlayer(player: AVPlayer(url: videoURL))
-                .frame(height: 300)
-            
-            Text("Add Music Feature Coming Soon...")
-        }
-        .navigationTitle("Edit Video")
-    }
-}
 
 // ✅ **Updated Feature Button**
 struct FeatureButton: View {
