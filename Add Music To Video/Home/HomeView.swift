@@ -1,123 +1,21 @@
-////
-////  HomeView.swift
-////  Add Music To Video
-////
-////  Created by  Tipu Sultanon 3/4/25.
-////
 //
-//import SwiftUI
+//  HomeView.swift
+//  Add Music To Video
 //
-//struct HomeView: View {
-//    var body: some View {
-//        NavigationView {
-//            VStack {
-//                // Top Bar
-//                HStack {
-//                    Button(action: {
-//                        // Navigate to Settings
-//                    }) {
-//                        Image(systemName: "line.horizontal.3")
-//                            .foregroundColor(.white)
-//                            .padding()
-//                    }
-//                    Spacer()
-//                    Button(action: {
-//                        // Navigate to Pro version
-//                    }) {
-//                        HStack {
-//                            Image(systemName: "crown.fill")
-//                                .foregroundColor(.purple)
-//                            Text("PRO")
-//                                .font(.headline)
-//                                .foregroundColor(.white)
-//                        }
-//                        .padding()
-//                        .background(Color.purple.opacity(0.2))
-//                        .cornerRadius(10)
-//                    }
-//                }
-//                .padding(.horizontal)
-//                
-//                // Advertisement Banner
-//                Image("ad_banner") // Replace with actual image
-//                    .resizable()
-//                    .aspectRatio(contentMode: .fill)
-//                    .frame(height: 350)
-//                    .cornerRadius(10)
-//                    .padding()
-//                
-//                
-//                Spacer()
-//                // Main Button
-//                NavigationLink(destination: AddMusicView()) {
-//                    HStack {
-//                        Image(systemName: "music.note")
-//                            .foregroundColor(.orange)
-//                        Text("Add Music to Video")
-//                            .font(.headline)
-//                            .foregroundColor(.white)
-//                    }
-//                    .frame(maxWidth: .infinity, minHeight: 50)
-//                    .background(Color.gray.opacity(0.8))
-//                    .cornerRadius(10)
-//                    .padding(.horizontal)
-//                }
-//                
-//                // Grid of Feature Buttons
-//                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-//                    FeatureButton(title: "AI Effects", icon: "sparkles", color: .orange)
-//                    FeatureButton(title: "Slow Motion", icon: "speedometer", color: .pink)
-//                    FeatureButton(title: "Cut Video", icon: "scissors", color: .green)
-//                    FeatureButton(title: "Cut Audio", icon: "music.note.list", color: .yellow)
-//                    FeatureButton(title: "Merge Audio", icon: "music.quarternote.3", color: .purple)
-//                    FeatureButton(title: "Extract Audio", icon: "square.and.arrow.down", color: .blue)
-//                }
-//                .padding()
-//                
-//                Spacer()
-//            }
-//            .background(Color.black.edgesIgnoringSafeArea(.all))
-//            .navigationBarHidden(true)
-//        }
-//    }
-//}
+//  Created by  Tipu Sultan on 3/4/25.
 //
-//struct FeatureButton: View {
-//    var title: String
-//    var icon: String
-//    var color: Color
-//    
-//    var body: some View {
-//        NavigationLink(destination: Text("\(title) Page")) {
-//            HStack {
-//                Image(systemName: icon)
-//                    .foregroundColor(color)
-//                Text(title)
-//                    .foregroundColor(.white)
-//            }
-//            .frame(maxWidth: .infinity, minHeight: 50)
-//            .background(Color.gray.opacity(0.3))
-//            .cornerRadius(10)
-//        }
-//    }
-//}
-//
-//struct HomeView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        HomeView()
-//    }
-//}
-
 
 import SwiftUI
 import PhotosUI
+import _AVKit_SwiftUI
 
 struct HomeView: View {
     @State private var selectedVideoURL: URL? = nil
     @State private var isVideoPickerPresented = false
     @State private var navigateToDestination = false
     @State private var destinationView: AnyView? = nil
-
+    @State private var selectedItem: PhotosPickerItem? = nil
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -157,12 +55,8 @@ struct HomeView: View {
                     .padding()
                 
                 Spacer()
-
                 // ✅ **Main Button: Add Music to Video**
-                Button(action: {
-                    isVideoPickerPresented = true
-                    destinationView = AnyView(AddMusicView(videoURL: selectedVideoURL))
-                }) {
+                PhotosPicker(selection: $selectedItem, matching: .videos) {
                     HStack {
                         Image(systemName: "music.note")
                             .foregroundColor(.orange)
@@ -175,12 +69,22 @@ struct HomeView: View {
                     .cornerRadius(10)
                     .padding(.horizontal)
                 }
-
+                    .onChange(of: selectedItem) { newItem in
+                        Task {
+                            if let data = try? await newItem?.loadTransferable(type: Data.self),
+                               let tempURL = saveVideoToTempDirectory(data: data) {
+                                selectedVideoURL = tempURL
+                                destinationView = AnyView(VideoEditorView(videoURL: tempURL))
+                                navigateToDestination = true
+                            }
+                        }
+                    }
+                
                 // ✅ **Navigation Trigger**
                 NavigationLink(destination: destinationView, isActive: $navigateToDestination) {
                     EmptyView()
                 }
-
+                
                 // ✅ **Grid of Feature Buttons**
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     FeatureButton(title: "AI Effects", icon: "sparkles", color: .orange, destination: AnyView(AIEffectsView()), selectedVideoURL: $selectedVideoURL, isVideoPickerPresented: $isVideoPickerPresented, navigateToDestination: $navigateToDestination, destinationView: $destinationView)
@@ -196,14 +100,34 @@ struct HomeView: View {
             }
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
-            .sheet(isPresented: $isVideoPickerPresented, onDismiss: {
-                if selectedVideoURL != nil, let destination = destinationView {
-                    navigateToDestination = true // ✅ Trigger navigation
-                }
-            }) {
-                VideoPicker(selectedVideoURL: $selectedVideoURL)
-            }
         }
+    }
+    
+    func saveVideoToTempDirectory(data: Data) -> URL? {
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let tempFileURL = tempDirectory.appendingPathComponent("selected_video.mp4")
+        
+        do {
+            try data.write(to: tempFileURL)
+            return tempFileURL
+        } catch {
+            print("Error saving video: \(error)")
+            return nil
+        }
+    }
+}
+
+struct VideoEditorView: View {
+    let videoURL: URL
+    
+    var body: some View {
+        VStack {
+            VideoPlayer(player: AVPlayer(url: videoURL))
+                .frame(height: 300)
+            
+            Text("Add Music Feature Coming Soon...")
+        }
+        .navigationTitle("Edit Video")
     }
 }
 
