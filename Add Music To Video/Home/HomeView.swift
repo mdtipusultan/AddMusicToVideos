@@ -2,7 +2,7 @@
 //  HomeView.swift
 //  Add Music To Video
 //
-//  Created by  Tipu Sultan on 3/4/25.
+//  Created by Tipu Sultan on 3/4/25.
 //
 
 import SwiftUI
@@ -45,7 +45,7 @@ struct HomeView: View {
                     }
                 }
                 .padding(.horizontal)
-
+                
                 // Advertisement Banner
                 Image("ad_banner")
                     .resizable()
@@ -69,16 +69,16 @@ struct HomeView: View {
                     .cornerRadius(10)
                     .padding(.horizontal)
                 }
-                    .onChange(of: selectedItem) { newItem in
-                        Task {
-                            if let data = try? await newItem?.loadTransferable(type: Data.self),
-                               let tempURL = saveVideoToTempDirectory(data: data) {
-                                selectedVideoURL = tempURL
-                                destinationView = AnyView(VideoEditorView(videoURL: tempURL))
-                                navigateToDestination = true
-                            }
+                .onChange(of: selectedItem) { newItem in
+                    Task {
+                        if let data = try? await newItem?.loadTransferable(type: Data.self),
+                           let tempURL = saveVideoToTempDirectory(data: data) {
+                            selectedVideoURL = tempURL
+                            destinationView = AnyView(VideoEditorView(videoURL: tempURL))
+                            navigateToDestination = true
                         }
                     }
+                }
                 
                 // ✅ **Navigation Trigger**
                 NavigationLink(destination: destinationView, isActive: $navigateToDestination) {
@@ -95,7 +95,7 @@ struct HomeView: View {
                     FeatureButton(title: "Extract Audio", icon: "square.and.arrow.down", color: .blue, destination: AnyView(ExtractAudioView()), selectedVideoURL: $selectedVideoURL, isVideoPickerPresented: $isVideoPickerPresented, navigateToDestination: $navigateToDestination, destinationView: $destinationView)
                 }
                 .padding()
-
+                
                 Spacer()
             }
             .background(Color.black.edgesIgnoringSafeArea(.all))
@@ -128,7 +128,7 @@ struct FeatureButton: View {
     @Binding var isVideoPickerPresented: Bool
     @Binding var navigateToDestination: Bool
     @Binding var destinationView: AnyView?
-
+    
     var body: some View {
         Button(action: {
             isVideoPickerPresented = true

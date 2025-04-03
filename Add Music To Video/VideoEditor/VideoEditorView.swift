@@ -2,7 +2,7 @@
 //  VideoEditorView.swift
 //  Add Music To Video
 //
-//  Created by  Tipu Sultan on 3/4/25.
+//  Created by Tipu Sultan on 3/4/25.
 //
 
 import SwiftUI
